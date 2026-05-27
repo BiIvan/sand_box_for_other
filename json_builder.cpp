@@ -1,3 +1,4 @@
+//2026.05.27_23:20
 #include "json_builder.h"
 
 #include <stdexcept>
@@ -7,6 +8,14 @@ using namespace std::literals;
 
 namespace json {
   namespace detail {
+
+    bool BuilderCore::InDict() const {
+      return !nodes_stack_.empty() && nodes_stack_.back().type == ContainerType::Dict;
+    }
+
+    bool BuilderCore::InArray() const {
+      return !nodes_stack_.empty() && nodes_stack_.back().type == ContainerType::Array;
+    }
 
     Node& BuilderCore::AddNode(Node node) {
       if (!has_root_) {
@@ -33,6 +42,7 @@ namespace json {
 
       auto& dict = top.node->AsDict();
       auto [it, inserted] = dict.emplace(std::move(*current_key_), std::move(node));
+      (void)inserted;
       current_key_.reset();
       return it->second;
     }
@@ -91,21 +101,117 @@ namespace json {
       return root_;
     }
 
+    template <typename T>
+    Context ParentModel<T>::Return(std::shared_ptr<BuilderCore>) {
+      return std::move(value_);
+    }
+
+    template Context ParentModel<Context>::Return(std::shared_ptr<BuilderCore>);
+
   }  // namespace detail
 
-  Builder::DictItemContext<FinalContext> Builder::StartDict()&& {
-    core_->StartDict();
-    return Builder::DictItemContext<FinalContext>(core_, FinalContext(core_));
+  Context Context::Key(std::string key) {
+    core_->SetKey(std::move(key));
+    return Context(core_);
   }
 
-  Builder::ArrayItemContext<FinalContext> Builder::StartArray()&& {
-    core_->StartArray();
-    return Builder::ArrayItemContext<FinalContext>(core_, FinalContext(core_));
-  }
-
-  FinalContext Builder::Value(Node value)&& {
+  Context Context::Value(Node value) {
     core_->AddValue(std::move(value));
-    return FinalContext(core_);
+    return Context(core_);
+  }
+
+  Context Context::StartDict() {
+    core_->StartDict();
+    return Context(core_);
+  }
+
+  Context Context::StartArray() {
+    core_->StartArray();
+    return Context(core_);
+  }
+
+  Context Context::EndDict() {
+    core_->EndDict();
+    return Context(core_);
+  }
+
+  Context Context::EndArray() {
+    core_->EndArray();
+    return Context(core_);
+  }
+
+  Node Context::Build() {
+    return core_->Build();
+  }
+
+  KeyItemContext DictItemContext::Key(std::string key) {
+    core_->SetKey(std::move(key));
+    return KeyItemContext(core_, std::move(parent_));
+  }
+
+  Context DictItemContext::EndDict() {
+    core_->EndDict();
+    return std::move(*parent_).Return(core_);
+  }
+
+  DictItemContext KeyItemContext::Value(Node value) {
+    core_->AddValue(std::move(value));
+    return DictItemContext(core_, std::move(parent_));
+  }
+
+  DictItemContext KeyItemContext::StartDict() {
+    auto parent = std::make_unique<detail::ParentModel<Context>>(Context(core_));
+    core_->StartDict();
+    return DictItemContext(core_, std::move(parent));
+  }
+
+  ArrayItemContext KeyItemContext::StartArray() {
+    auto parent = std::make_unique<detail::ParentModel<Context>>(Context(core_));
+    core_->StartArray();
+    return ArrayItemContext(core_, std::move(parent));
+  }
+
+  ArrayItemContext ArrayItemContext::Value(Node value) {
+    core_->AddValue(std::move(value));
+    return ArrayItemContext(core_, std::move(parent_));
+  }
+
+  DictItemContext ArrayItemContext::StartDict() {
+    auto parent = std::make_unique<detail::ParentModel<Context>>(Context(core_));
+    core_->StartDict();
+    return DictItemContext(core_, std::move(parent));
+  }
+
+  ArrayItemContext ArrayItemContext::StartArray() {
+    auto parent = std::make_unique<detail::ParentModel<Context>>(Context(core_));
+    core_->StartArray();
+    return ArrayItemContext(core_, std::move(parent));
+  }
+
+  Context ArrayItemContext::EndArray() {
+    core_->EndArray();
+    return std::move(*parent_).Return(core_);
+  }
+
+  DictItemContext Builder::StartDict() {
+    core_->StartDict();
+    return DictItemContext(
+      core_,
+      std::make_unique<detail::ParentModel<Context>>(Context(core_))
+    );
+  }
+
+  ArrayItemContext Builder::StartArray() {
+    core_->StartArray();
+    return ArrayItemContext(
+      core_,
+      std::make_unique<detail::ParentModel<Context>>(Context(core_))
+    );
+  }
+
+  Context Builder::Value(Node value) {
+    core_->AddValue(std::move(value));
+    return Context(core_);
   }
 
 }  // namespace json

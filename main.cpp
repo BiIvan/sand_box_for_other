@@ -149,7 +149,6 @@ int main() {
         std::cout
     );
     std::cout << std::endl;
-
   try {
     const Document input = json::Load(std::cin);
     const Dict& root = GetRootDict(input);

@@ -1,4 +1,4 @@
-//2026-04-26 10:36
+//2026.05.27_23:20
 
 #include <string>
 #include <vector>
@@ -38,13 +38,13 @@ namespace json_reader {
 
     json::Node NotFound(const ParsedStatRequest& request) {
       return
-      json::Builder{}
+        json::Builder{}
         .StartDict()
-          .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
-          .Key("error_message")
+        .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
+        .Key("error_message")
         .Value(json::Node(std::string("not found")))
         .EndDict()
-      .Build();
+        .Build();
     }
 
     json::Array SortedBusesArray(transport_catalogue::OptionalBusesList buses) {
@@ -207,30 +207,30 @@ namespace json_reader {
       if (!info) {
         return NotFound(request);
       }
-      else{
+      else {
         return
           json::Builder{}
-            .StartDict()
-              .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
-              .Key("stop_count").Value(json::Node(static_cast<int>(info->stop_count)))
-              .Key("unique_stop_count")
-              .Value(json::Node(static_cast<int>(info->unique_stop_count)))
-              .Key("route_length").Value(json::Node(info->road_length))
-              .Key("curvature").Value(json::Node(info->geo_length > 0.0 
-                ? static_cast<double>(info->road_length) / info->geo_length 
-                : 0))
-            .EndDict()
+          .StartDict()
+          .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
+          .Key("stop_count").Value(json::Node(static_cast<int>(info->stop_count)))
+          .Key("unique_stop_count")
+          .Value(json::Node(static_cast<int>(info->unique_stop_count)))
+          .Key("route_length").Value(json::Node(info->road_length))
+          .Key("curvature").Value(json::Node(info->geo_length > 0.0
+            ? static_cast<double>(info->road_length) / info->geo_length
+            : 0))
+          .EndDict()
           .Build();
       }
     }
 
     json::Node MakeMapResponse(const ParsedStatRequest& request, std::string map_str) {
-      return 
+      return
         json::Builder{}
-          .StartDict()
-            .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
-            .Key("map").Value(json::Node(std::move(map_str)))
-          .EndDict()
+        .StartDict()
+        .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
+        .Key("map").Value(json::Node(std::move(map_str)))
+        .EndDict()
         .Build();
     }
 
@@ -241,12 +241,12 @@ namespace json_reader {
         return NotFound(request);
       }
       return
-      json::Builder{}
+        json::Builder{}
         .StartDict()
-          .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
-          .Key("buses").Value(SortedBusesArray(buses))
+        .Key("request_id").Value(json::Node(static_cast<int>(request.id)))
+        .Key("buses").Value(SortedBusesArray(buses))
         .EndDict()
-      .Build();
+        .Build();
     }
 
     json::Document BuildResponse(const RequestHandler& handler,
